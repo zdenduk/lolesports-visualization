@@ -1,13 +1,18 @@
 import com.google.gson.Gson;
 import cvut.fel.davidzde.pojos.GameData;
+import cvut.fel.davidzde.util.GameAttribute;
 import cvut.fel.davidzde.util.TeamInfo;
+import cvut.fel.davidzde.util.graphs.LineGraphUtil;
 import javafx.application.Application;
+import javafx.beans.value.ObservableValue;
+import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.BufferedReader;
@@ -15,7 +20,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MainApplication extends Application {
@@ -48,6 +52,7 @@ public class MainApplication extends Application {
 
         List<GameData> gamesData = new ArrayList<>();
 
+        // TODO class for deserializing
         try {
             for (String gameID : gameIDs) {
                 // create Gson instance
@@ -70,50 +75,54 @@ public class MainApplication extends Application {
             ex.printStackTrace();
         }
 
-        // TODO FIND MAXIMUM AND MINIMUM FOR EACH AXIS
-
-        //Defining X axis
-        CategoryAxis xAxis = new CategoryAxis();
-        xAxis.setLabel("Game");
-
-        //Defining y axis
-        NumberAxis yAxis = new NumberAxis(0, 100000, 1000);
-        yAxis.setLabel("Total gold");
-
-        LineChart linechart = new LineChart(xAxis, yAxis);
-
-        // TODO user can choose which team to visualize
         TeamInfo[] teamInfos = TeamInfo.values();
+        GameAttribute[] gameAttributes = GameAttribute.values();
 
-        Map<String, XYChart.Series> chartData = new HashMap<>();
-
-        // Setting series for each team (that is selected to be in graph)
+        // Map of selected teams, initially all teams are selected
+        // String represents TeamID
+        Map<String, Boolean> selectedTeams = new HashMap<>();
         for (TeamInfo teamInfo : teamInfos) {
-            XYChart.Series series = new XYChart.Series();
-            series.setName(teamInfo.getFullName());
-            chartData.put(teamInfo.getTeamID(), series);
+            selectedTeams.put(teamInfo.getTeamID(), true);
         }
 
-        for (GameData gameData : gamesData) {
-            Date date;
-            try {
-                date = new SimpleDateFormat("yyyy-MM-dd").parse(gameData.getRfc460Timestamp());
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
+        // Creating toggles for each team (X axis)
+        HBox teamsToggle = new HBox();
+        teamsToggle.setSpacing(10);
+        teamsToggle.setAlignment(Pos.CENTER);
+        for (TeamInfo teamInfo : teamInfos) {
+            CheckBox cb = new CheckBox(teamInfo.getFullName());
+            cb.setSelected(true);
+            teamsToggle.getChildren().add(cb);
 
-            if (date.compareTo(new SimpleDateFormat("yyyy-MM-dd").parse("2022-01-21")) >= 0 &&
-                    date.compareTo(new SimpleDateFormat("yyyy-MM-dd").parse("2022-03-06")) <= 0) {
-                chartData.get(gameData.getBlueTeamMetadata().getEsportsTeamId()).getData().add(new XYChart.Data(date.toString(), gameData.getBlueTeam().getTotalGold()));
-                chartData.get(gameData.getRedTeamMetadata().getEsportsTeamId()).getData().add(new XYChart.Data(date.toString(), gameData.getRedTeam().getTotalGold()));
-            }
+            // Set listener for changes
+            cb.selectedProperty().addListener((ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) -> {
+                selectedTeams.put(teamInfo.getTeamID(), !selectedTeams.get(teamInfo.getTeamID()));
+            });
         }
 
-        linechart.getData().addAll(chartData.values());
+        // Creating radio buttons to select attribute (Y axis)
+        HBox attributesToggle = new HBox();
+        attributesToggle.setSpacing(10);
+        attributesToggle.setAlignment(Pos.CENTER);
+        ToggleGroup tg = new ToggleGroup();
+        for (GameAttribute gameAttribute : gameAttributes) {
+            RadioButton rb = new RadioButton(gameAttribute.getInfoText());
+            rb.setToggleGroup(tg);
+            attributesToggle.getChildren().add(rb);
+        }
 
-        linechart.setPrefSize(1920, 900);
+        LineGraphUtil.INSTANCE.initGraph("Date", "Total Gold");
+        LineGraphUtil.INSTANCE.addData(gamesData, selectedTeams, "Total Gold");
+        LineGraphUtil.INSTANCE.addTooltips();
 
-        Group root = new Group(linechart);
+        VBox vBox = new VBox();
+        vBox.setSpacing(10);
+
+        vBox.getChildren().add(LineGraphUtil.INSTANCE.getLinechart());
+        vBox.getChildren().add(teamsToggle);
+        vBox.getChildren().add(attributesToggle);
+
+        Group root = new Group(vBox);
 
         Scene scene = new Scene(root, 1920, 1080);
         primaryStage.setScene(scene);
