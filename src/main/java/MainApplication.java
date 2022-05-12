@@ -1,8 +1,10 @@
 import com.google.gson.Gson;
 import cvut.fel.davidzde.pojos.GameData;
 import cvut.fel.davidzde.util.GameAttribute;
+import cvut.fel.davidzde.util.GraphType;
 import cvut.fel.davidzde.util.TeamInfo;
 import cvut.fel.davidzde.util.graphs.LineGraphUtil;
+import cvut.fel.davidzde.util.graphs.StackedBarGraphUtil;
 import javafx.application.Application;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Pos;
@@ -19,7 +21,6 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.text.ParseException;
 import java.util.*;
 
 public class MainApplication extends Application {
@@ -28,8 +29,12 @@ public class MainApplication extends Application {
         launch(args);
     }
 
+    private String selectedAttribute = "Total Gold";
+
+    VBox mainLayout;
+
     @Override
-    public void start(Stage primaryStage) throws ParseException {
+    public void start(Stage primaryStage) {
         primaryStage.setTitle("LoL Esports visualization");
 
         // Getting data
@@ -96,9 +101,40 @@ public class MainApplication extends Application {
 
             // Set listener for changes
             cb.selectedProperty().addListener((ObservableValue<? extends Boolean> ov, Boolean old_val, Boolean new_val) -> {
-                selectedTeams.put(teamInfo.getTeamID(), !selectedTeams.get(teamInfo.getTeamID()));
+                selectedTeams.put(teamInfo.getTeamID(), new_val);
+                updateGraph(selectedAttribute, gamesData, selectedTeams);
             });
         }
+
+        // Creating toggle for graph type
+        HBox barTypeToggle = new HBox();
+        barTypeToggle.setSpacing(10);
+        barTypeToggle.setAlignment(Pos.CENTER);
+        ToggleGroup barTypeToggleGroup = new ToggleGroup();
+        RadioButton lineGraphRadio = new RadioButton("Linechart");
+        lineGraphRadio.fire();
+        RadioButton stackedBarGraphRadio = new RadioButton("Stacked bar chart");
+        lineGraphRadio.setToggleGroup(barTypeToggleGroup);
+        stackedBarGraphRadio.setToggleGroup(barTypeToggleGroup);
+        barTypeToggle.getChildren().add(lineGraphRadio);
+        barTypeToggle.getChildren().add(stackedBarGraphRadio);
+
+        // Listener for requested graph type changes
+        barTypeToggleGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            RadioButton rb = (RadioButton) barTypeToggleGroup.getSelectedToggle();
+            if (rb != null) {
+                String s = rb.getText();
+                if (s.equals("Linechart")) {
+                    GraphType.INSTANCE.setSelectedGraph(LineGraphUtil.INSTANCE);
+                    mainLayout.getChildren().set(0, GraphType.INSTANCE.getSelectedGraph().getGraph());
+                    updateGraph(selectedAttribute, gamesData, selectedTeams);
+                } else if (s.equals("Stacked bar chart")) {
+                    GraphType.INSTANCE.setSelectedGraph(StackedBarGraphUtil.INSTANCE);
+                    mainLayout.getChildren().set(0, GraphType.INSTANCE.getSelectedGraph().getGraph());
+                    updateGraph(selectedAttribute, gamesData, selectedTeams);
+                }
+            }
+        });
 
         // Creating radio buttons to select attribute (Y axis)
         HBox attributesToggle = new HBox();
@@ -110,22 +146,47 @@ public class MainApplication extends Application {
             rb.setToggleGroup(tg);
             attributesToggle.getChildren().add(rb);
         }
+        // Set first radio as checked
+        RadioButton first = (RadioButton) attributesToggle.getChildren().get(0);
+        first.fire();
+
+        // Setting listener for radio buttons changes
+        tg.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            RadioButton rb = (RadioButton) tg.getSelectedToggle();
+            if (rb != null) {
+                String s = rb.getText();
+                this.selectedAttribute = s;
+                updateGraph(s, gamesData, selectedTeams);
+            }
+        });
 
         LineGraphUtil.INSTANCE.initGraph("Date", "Total Gold");
-        LineGraphUtil.INSTANCE.addData(gamesData, selectedTeams, "Total Gold");
+        LineGraphUtil.INSTANCE.addData(gamesData, selectedTeams, GameAttribute.TOTAL_GOLD.getInfoText());
         LineGraphUtil.INSTANCE.addTooltips();
 
-        VBox vBox = new VBox();
-        vBox.setSpacing(10);
+        StackedBarGraphUtil.INSTANCE.initGraph("Date", "Total Gold");
+        StackedBarGraphUtil.INSTANCE.addData(gamesData, selectedTeams, GameAttribute.TOTAL_GOLD.getInfoText());
+        StackedBarGraphUtil.INSTANCE.addTooltips();
 
-        vBox.getChildren().add(LineGraphUtil.INSTANCE.getLinechart());
-        vBox.getChildren().add(teamsToggle);
-        vBox.getChildren().add(attributesToggle);
+        mainLayout = new VBox();
+        mainLayout.setSpacing(10);
 
-        Group root = new Group(vBox);
+        mainLayout.getChildren().add(LineGraphUtil.INSTANCE.getGraph());
+        mainLayout.getChildren().add(teamsToggle);
+        mainLayout.getChildren().add(attributesToggle);
+        mainLayout.getChildren().add(barTypeToggle);
+
+        Group root = new Group(mainLayout);
 
         Scene scene = new Scene(root, 1920, 1080);
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    private void updateGraph(String selectedAttribute, List<GameData> gamesData, Map<String, Boolean> selectedTeams) {
+        GraphType.INSTANCE.getSelectedGraph().clearData();
+        GraphType.INSTANCE.getSelectedGraph().updateYAxis(selectedAttribute);
+        GraphType.INSTANCE.getSelectedGraph().addData(gamesData, selectedTeams, selectedAttribute);
+        GraphType.INSTANCE.getSelectedGraph().addTooltips();
     }
 }

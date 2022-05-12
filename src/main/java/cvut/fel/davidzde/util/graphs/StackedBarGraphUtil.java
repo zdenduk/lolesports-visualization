@@ -3,10 +3,7 @@ package cvut.fel.davidzde.util.graphs;
 import cvut.fel.davidzde.pojos.GameData;
 import cvut.fel.davidzde.util.GameAttribute;
 import cvut.fel.davidzde.util.TeamInfo;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
+import javafx.scene.chart.*;
 import javafx.scene.control.Tooltip;
 
 import java.text.ParseException;
@@ -16,13 +13,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public enum LineGraphUtil implements GraphUtil{
+public enum StackedBarGraphUtil implements GraphUtil{
     INSTANCE;
 
     private final int xSize = 1920;
     private final int ySize = 900;
 
-    private LineChart linechart;
+    private StackedBarChart stackedBarChart;
 
     private TeamInfo[] teamInfos;
     private GameAttribute[] gameAttributes;
@@ -32,8 +29,8 @@ public enum LineGraphUtil implements GraphUtil{
     CategoryAxis xAxis;
     NumberAxis yAxis;
 
-    public LineChart getGraph() {
-        return linechart;
+    public StackedBarChart getGraph() {
+        return stackedBarChart;
     }
 
     public void initGraph(String xAxisLabel, String yAxisLabel) {
@@ -45,9 +42,9 @@ public enum LineGraphUtil implements GraphUtil{
         yAxis = new NumberAxis(0, 100000, 1000);
         yAxis.setLabel(yAxisLabel);
 
-        linechart = new LineChart(xAxis, yAxis);
-        linechart.setPrefSize(1920, 900);
-        linechart.setAnimated(false);
+        stackedBarChart = new StackedBarChart(xAxis, yAxis);
+        stackedBarChart.setPrefSize(1920, 900);
+        stackedBarChart.setAnimated(false);
     }
 
     public void addData(List<GameData> gamesData, Map<String, Boolean> selectedTeams, String selectedAttribute) {
@@ -108,40 +105,40 @@ public enum LineGraphUtil implements GraphUtil{
             }
         }
 
-        linechart.getData().addAll(chartData.values());
+        stackedBarChart.getData().addAll(chartData.values());
     }
 
     public void clearData() {
         chartData.clear();
-        linechart.getData().clear();
+        stackedBarChart.getData().clear();
     }
 
     public void updateYAxis(String selectedAttribute) {
         yAxis.setLabel(selectedAttribute);
         if (selectedAttribute.equals(GameAttribute.BARONS.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(3);
+            yAxis.setUpperBound(10);
             yAxis.setTickUnit(1);
         } else if (selectedAttribute.equals(GameAttribute.DRAGONS.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(6);
-            yAxis.setTickUnit(1);
+            yAxis.setUpperBound(30);
+            yAxis.setTickUnit(5);
         } else if (selectedAttribute.equals(GameAttribute.TOTAL_GOLD.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(100000);
-            yAxis.setTickUnit(1000);
+            yAxis.setUpperBound(700000);
+            yAxis.setTickUnit(10000);
         } else if (selectedAttribute.equals(GameAttribute.INHIBITORS.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(5);
-            yAxis.setTickUnit(1);
+            yAxis.setUpperBound(15);
+            yAxis.setTickUnit(5);
         } else if (selectedAttribute.equals(GameAttribute.TOTAL_KILLS.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(50);
-            yAxis.setTickUnit(5);
+            yAxis.setUpperBound(200);
+            yAxis.setTickUnit(10);
         } else if (selectedAttribute.equals(GameAttribute.TOWERS.getInfoText())) {
             yAxis.setLowerBound(0);
-            yAxis.setUpperBound(15);
-            yAxis.setTickUnit(1);
+            yAxis.setUpperBound(100);
+            yAxis.setTickUnit(10);
         }
     }
 
@@ -154,7 +151,7 @@ public enum LineGraphUtil implements GraphUtil{
         }
     }
 
-    LineGraphUtil() {
+    StackedBarGraphUtil() {
         teamInfos = TeamInfo.values();
         gameAttributes = GameAttribute.values();
 
